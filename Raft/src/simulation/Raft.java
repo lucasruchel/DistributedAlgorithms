@@ -89,7 +89,7 @@ public class Raft extends CrashReceiver {
             sender.send(mr);
 
             // inicia o timer novamente para aguardar o heartbeat do lider
-//            timer.schedule(timeoutTask,leaderTimeout);
+            timer.schedule(timeoutTask,leaderTimeout);
 
         } else if (messageType == APPEND_ENTRY_RES){ // Resposta recebida pelo lider
             AppendEntriesResponse response = (AppendEntriesResponse) m.getContent();
@@ -168,7 +168,7 @@ public class Raft extends CrashReceiver {
 
                 raftContext.getState().setRole(Role.LEADER);
                 if (Parameters.DEBUG){
-                    System.out.printf("p%s: Lider eleito!!",process.getID());
+                    System.out.printf("p%s: Lider eleito!! \n",process.getID());
                 }
 
                 // inicia processo para heartbeat e appendentries
@@ -308,6 +308,10 @@ public class Raft extends CrashReceiver {
 
         @Override
         public void run() {
+
+            if (process.clock() > simulation_time)
+                return;
+
             if (Parameters.DEBUG)
                 System.out.printf("p%s: Iniciando eleição de líder at %s\n",process.getID(),process.clock());
 
@@ -319,18 +323,13 @@ public class Raft extends CrashReceiver {
 
         @Override
         public void run() {
-            while (simulation_time > process.clock() &&
-                    raftContext.getState().getRole() == Role.LEADER){
-
+            if (raftContext.getState().getRole() == Role.LEADER)
                 serverAppendEntries();
+            else
+                return;
 
-                try {
-                    sleep(0.5);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-
+            if (process.clock() < simulation_time)
+                timer.schedule(this,leaderTimeout);
         }
     }
 
