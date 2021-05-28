@@ -2,10 +2,10 @@ package messages;
 
 public class AppendEntriesResponse {
     private boolean success;
-    private int term;
+    private long term;
     private int matchIndex;
 
-    public AppendEntriesResponse(boolean success, int term, int matchIndex) {
+    public AppendEntriesResponse(boolean success, long term, int matchIndex) {
         this.success = success;
         this.term = term;
         this.matchIndex = matchIndex;
@@ -19,7 +19,7 @@ public class AppendEntriesResponse {
         this.success = success;
     }
 
-    public int getTerm() {
+    public long getTerm() {
         return term;
     }
 

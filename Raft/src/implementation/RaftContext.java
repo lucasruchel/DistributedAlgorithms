@@ -1,5 +1,6 @@
 package implementation;
 
+import configurations.Parameters;
 import data.LogEntry;
 import data.Role;
 import data.State;
@@ -26,6 +27,8 @@ public class RaftContext {
 
 
 
+
+
     /***
      *
      * @param np - numero de processos
@@ -42,8 +45,8 @@ public class RaftContext {
         state.setCommitIndex(0);
 
         for (int i = 0; i < np; i++){
-           matchIndex.add(state.getCommitIndex());
-           nextIndex.add(state.getCommitIndex()+1);
+           matchIndex.add((int) state.getCommitIndex());
+           nextIndex.add((int) (state.getCommitIndex()+1));
         }
     }
 
@@ -55,23 +58,29 @@ public class RaftContext {
         if (m.getTerm() < state.getCurrentTerm())
             return false;
 
+        if (m.getTerm() == state.getCurrentTerm() && m.getLeaderId() != state.getVotedFor())
+            return false;
+
         else if (m.getTerm() > state.getCurrentTerm()){
             state.setCurrentTerm(m.getTerm());
             state.setRole(Role.FOLLOWER);
+
+            if (Parameters.DEBUG)
+                System.out.printf("Atualizando para Follower t=%s", m.getTerm());
         }
 
-        int prevLog = m.getPrevLogIndex();
-        if (log.size() > prevLog && log.get(prevLog).getTerm() == m.getPrevLogTerm())
+        long prevLog = m.getPrevLogIndex();
+        if (log.size() > prevLog && log.get((int) prevLog).getTerm() == m.getPrevLogTerm())
             return false;
 
         // Condições de sucesso
         // Entrada sobrepoe log, ainda não está aplicada
         List<LogEntry> entries = m.getEntries();
-        int nextIndex = m.getPrevLogIndex();
+        long nextIndex = m.getPrevLogIndex();
 
         for (LogEntry entry: entries){
               if (log.size() >= nextIndex)     // Sobrepoe indices ja existentes, se houverem
-                   log.add(nextIndex, entry);
+                   log.add((int) nextIndex, entry);
                 else
                    log.add(entry); // Adiciona novos valores ao log
 

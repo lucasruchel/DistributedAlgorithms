@@ -2,9 +2,9 @@ package data;
 
 public class LogEntry {
     private Object data;
-    private int term;
+    private long term;
 
-    public LogEntry(Object data, int term) {
+    public LogEntry(Object data, long term) {
         this.data = data;
         this.term = term;
     }
@@ -17,11 +17,11 @@ public class LogEntry {
         this.data = data;
     }
 
-    public int getTerm() {
+    public long getTerm() {
         return term;
     }
 
-    public void setTerm(int term) {
+    public void setTerm(long term) {
         this.term = term;
     }
 

@@ -11,42 +11,43 @@ public class AppendEntriesRequest {
      * Utilizado tanto como keep-alive enviado pelo líder quando para novos valores
      */
 
-    private int term;
-    private int leaderId;
-    private int prevLogIndex;
-    private int prevLogTerm;
+    private long term;
+    private long leaderId;
+    private long prevLogIndex;
+    private long prevLogTerm;
     private List<LogEntry> entries;
-    private int leaderCommit;
+    private long leaderCommit;
 
-    public int getTerm() {
+
+    public long getTerm() {
         return term;
     }
 
-    public void setTerm(int term) {
+    public void setTerm(long term) {
         this.term = term;
     }
 
-    public int getLeaderId() {
+    public long getLeaderId() {
         return leaderId;
     }
 
-    public void setLeaderId(int leaderId) {
+    public void setLeaderId(long leaderId) {
         this.leaderId = leaderId;
     }
 
-    public int getPrevLogIndex() {
+    public long getPrevLogIndex() {
         return prevLogIndex;
     }
 
-    public void setPrevLogIndex(int prevLogIndex) {
+    public void setPrevLogIndex(long prevLogIndex) {
         this.prevLogIndex = prevLogIndex;
     }
 
-    public int getPrevLogTerm() {
+    public long getPrevLogTerm() {
         return prevLogTerm;
     }
 
-    public void setPrevLogTerm(int prevLogTerm) {
+    public void setPrevLogTerm(long prevLogTerm) {
         this.prevLogTerm = prevLogTerm;
     }
 
@@ -58,15 +59,15 @@ public class AppendEntriesRequest {
         this.entries = entries;
     }
 
-    public int getLeaderCommit() {
+    public long getLeaderCommit() {
         return leaderCommit;
     }
 
-    public void setLeaderCommit(int leaderCommit) {
+    public void setLeaderCommit(long leaderCommit) {
         this.leaderCommit = leaderCommit;
     }
 
-    public int getLastLogIndex(){
+    public long getLastLogIndex(){
         return this.prevLogIndex + entries.size();
     }
 

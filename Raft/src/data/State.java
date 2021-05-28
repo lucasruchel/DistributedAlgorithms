@@ -6,10 +6,10 @@ import java.util.List;
 public class State {
     //Dito que persistente apos falhas
     //Termo atual utilizado pelo líder
-    private int currentTerm;
+    private long currentTerm;
 
     // Identificao do lider para o termo atual
-    private int votedFor;
+    private long votedFor;
 
     // registro de entradas recebidas pelo líder
     private List<LogEntry> log;
@@ -17,13 +17,14 @@ public class State {
     // ********* Dados em memoria em cada processo *******
 
     // Indice do ultimo registro conhecido a ser aplicado, ainda pendente
-    private int commitIndex;
+    private long commitIndex;
 
     // Indice do ultimo registro aplicado pelo algoritmo, entregue a aplicacao
-    private int lastApplied;
+    private long lastApplied;
 
     // Papel inicial de cada processo
     private Role role;
+
 
 
     public State(){
@@ -35,35 +36,43 @@ public class State {
 
 
 
-    public int getCurrentTerm() {
+    public long getCurrentTerm() {
         return currentTerm;
     }
 
-    public void setCurrentTerm(int currentTerm) {
+    public void setCurrentTerm(long currentTerm) {
         this.currentTerm = currentTerm;
     }
 
-    public int getVotedFor() {
+    public long getVotedFor() {
         return votedFor;
     }
 
-    public void setVotedFor(int votedFor) {
+    public void setVotedFor(long votedFor) {
         this.votedFor = votedFor;
     }
 
-    public int getCommitIndex() {
+    public long getCommitIndex() {
         return commitIndex;
     }
 
-    public void setCommitIndex(int commitIndex) {
+    public void setCommitIndex(long commitIndex) {
         this.commitIndex = commitIndex;
     }
 
-    public int getLastApplied() {
+    public long getLastApplied() {
         return lastApplied;
     }
 
-    public void setLastApplied(int lastApplied) {
+    public long getLastLogTerm(){
+        int logSize = log.size();
+        if (logSize > 0)
+            return log.get(logSize - 1).getTerm();
+
+        return 0;
+    }
+
+    public void setLastApplied(long lastApplied) {
         this.lastApplied = lastApplied;
     }
 
