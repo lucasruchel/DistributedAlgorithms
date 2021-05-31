@@ -22,7 +22,7 @@ public class RaftInitializer implements NekoProcessInitializer {
         raftAlgorithm.setId(PROTOCOL_APP);
         raftAlgorithm.launch();
 
-        Client client = new Client(process,PROTOCOL_CLIENT);
+        Client client = new Client(process,PROTOCOL_CLIENT, raftAlgorithm);
         client.setRaft(raftAlgorithm);
         client.setId(PROTOCOL_APP_CLIENT);
         client.launch();

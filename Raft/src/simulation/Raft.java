@@ -39,6 +39,8 @@ public class Raft extends CrashReceiver {
     private TimeoutTask timeoutTask;
     private Timer timer;
 
+    private List<LogChangeListener> listeners;
+
     static {
         MessageTypes.instance().register(APPEND_ENTRY_REQ,"Append_Req");
         MessageTypes.instance().register(APPEND_ENTRY_RES,"Append_Res");
@@ -54,10 +56,29 @@ public class Raft extends CrashReceiver {
 
         messageQueue = new NekoMessageQueue();
         timer = NekoSystem.instance().getTimer();
+
+        listeners = new ArrayList<>();
     }
+
+    public void addLogChangeListener(LogChangeListener listener){
+        listeners.add(listener);
+    }
+
+    public void removeLogChangeListener(LogChangeListener listener){
+        listeners.remove(listener);
+    }
+
+    private void publishValues(LogEntry data){
+        for (LogChangeListener l : listeners)
+            l.appliedValues(data);
+    }
+
 
     @Override
     public void deliver(NekoMessage m) {
+        if (isCrashed())
+            return;
+
         int messageType = m.getType();
 
         if (messageType == APPEND_ENTRY_REQ){ // Recebido por cada Follower
@@ -67,17 +88,24 @@ public class Raft extends CrashReceiver {
 
             int logSize = raftContext.getState().getLog().size(); // Indice do log
 
-            // Cancela leader timeout somente se o líder houver enviado uma requisição válida
+            // Cancela leader timeout somente se a requisição for lider e estiver válida
             if (success){
                 timeoutTask.cancel();
+
+                if (raftContext.getState().getLastApplied() < request.getLeaderCommit() ){
+                    raftContext.getState().setLastApplied(request.getLeaderCommit());
+
+                    LogEntry logValue = raftContext.getState().getLog().get((int) request.getLeaderCommit() - 1);
+                    publishValues(logValue);
+
+                    if (Parameters.DEBUG){
+                        System.out.printf("p%s:Applied in followers at %f: %d\n",process.getID(),process.clock(),request.getLeaderCommit());
+                    }
+                    // inicia o timer novamente para aguardar o heartbeat do lider
+                }
+                timer.schedule(timeoutTask,leaderTimeout);
             }
 
-            if (raftContext.getState().getLastApplied() < request.getLeaderCommit() ){
-                raftContext.getState().setLastApplied(request.getLeaderCommit());
-                if (Parameters.DEBUG){
-                    System.out.printf("p%s:Applied in followers at %f: %d\n",process.getID(),process.clock(),request.getLeaderCommit());
-                }
-            }
             AppendEntriesResponse response = new AppendEntriesResponse(
                     success,
                     raftContext.getState().getCurrentTerm(),
@@ -87,16 +115,19 @@ public class Raft extends CrashReceiver {
             NekoMessage mr = new NekoMessage(new int[]{m.getSource()},RaftInitializer.PROTOCOL_APP,
                                             response,APPEND_ENTRY_RES);
             sender.send(mr);
-
-            // inicia o timer novamente para aguardar o heartbeat do lider
-            timer.schedule(timeoutTask,leaderTimeout);
-
         } else if (messageType == APPEND_ENTRY_RES){ // Resposta recebida pelo lider
             AppendEntriesResponse response = (AppendEntriesResponse) m.getContent();
 
+            double clock = process.clock();
             if (response.isSuccess()){
                 int indexI = response.getMatchIndex();
+                int src = m.getSource();
                 int votes = 0;
+
+                // Adicionar nextIndex ao receber resposta para indice
+                if(raftContext.getNextIndex().get(src) <= indexI){
+                    raftContext.getNextIndex().set(src,indexI+1);
+                }
 
                 if (raftContext.getState().getLastApplied() < indexI) {
                     if (commitCounter.containsKey(indexI)) {
@@ -108,9 +139,11 @@ public class Raft extends CrashReceiver {
 
                     if (votes >= ((process.getN() / 2) + 1)) {
                         if (Parameters.DEBUG)
-                            System.out.println("Applied index:" + indexI);
+                            System.out.printf("p%s: Applied index: %s at %s\n", process.getID(),
+                                    indexI, process.clock());
 
                         raftContext.getState().setLastApplied(indexI);
+                        publishValues(raftContext.getState().getLog().get(indexI - 1));
                         commitCounter.remove(indexI);
                     } else {
                         commitCounter.put(indexI, votes);
@@ -159,11 +192,11 @@ public class Raft extends CrashReceiver {
             ResponseVote response = (ResponseVote) m.getContent();
 
             if (raftContext.getState().getCurrentTerm() == response.getTerm() &&
-            response.isGranted()){
+            response.isGranted() && raftContext.getState().getRole() != Role.LEADER){
                votesForTerm++;
-            }
 
-            if (votesForTerm > ((process.getN()/2)+1)){
+
+            if (votesForTerm >= (( process.getN()/2)+1)){
                 timeoutTask.cancel();
 
                 raftContext.getState().setRole(Role.LEADER);
@@ -171,8 +204,10 @@ public class Raft extends CrashReceiver {
                     System.out.printf("p%s: Lider eleito!! \n",process.getID());
                 }
 
+
                 // inicia processo para heartbeat e appendentries
                 timer.schedule(new ServerTask(),1);
+            }
             }
         }
     }
@@ -202,6 +237,13 @@ public class Raft extends CrashReceiver {
         leaderTimeout = ThreadLocalRandom.current().nextInt(Parameters.minElectionTimeout, Parameters.maxElectionTimeout);
         lastSeen = 0;
 
+        if (process.getID() == 1)
+            leaderTimeout = 150;
+//        else if (process.getID() == 2)
+//            leaderTimeout = 231;
+//        else if (process.getID() == 0)
+//            leaderTimeout = 290;
+
         timeoutTask = new TimeoutTask();
         timer.schedule(timeoutTask,leaderTimeout);
 
@@ -229,17 +271,35 @@ public class Raft extends CrashReceiver {
 
             if (server_index > 0){
                 List<LogEntry> logEntries = raftContext.getState().getLog();
+
+                LogEntry prevTerm = null;
+                LogEntry entry = null;
+
+
+
+                 if ((p_nextIndex - 2) >= 0 && logEntries.size() > (p_nextIndex - 2)){
+                    prevTerm = logEntries.get(p_nextIndex-2);
+
+                }
+
+
+//                else if (server_index < p_nextIndex){
+//                    entry = logEntries.get((int) (server_index-1));
+//                }
+
+
+                if (prevTerm != null){
+                    appendEntry.setPrevLogIndex(p_nextIndex - 1);
+                    appendEntry.setPrevLogTerm(prevTerm.getTerm());
+
+                }
+
                 if (server_index >= p_nextIndex){
-                    entries.add(logEntries.get(p_nextIndex-1));
+                    entry = logEntries.get(p_nextIndex-1);
+                    entries.add(entry);
                 }
 
-                if (server_index < p_nextIndex){
-                    LogEntry logEntry = logEntries.get((int) (server_index-1));
 
-                    appendEntry.setPrevLogIndex(server_index);
-                    appendEntry.setPrevLogTerm(logEntry.getTerm());
-                }
-                raftContext.getNextIndex().set(i,p_nextIndex+1);
             }
             appendEntry.setEntries(entries);
 
@@ -279,7 +339,7 @@ public class Raft extends CrashReceiver {
         RequestVote requestVote = new RequestVote(
                 term,
                 process.getID(),
-                state.getLastApplied(),
+                state.getLog().size(),
                 state.getLastLogTerm()
         );
 
@@ -323,14 +383,19 @@ public class Raft extends CrashReceiver {
 
         @Override
         public void run() {
+            // Se o processo continua com papel de líder envia o appendEntries
             if (raftContext.getState().getRole() == Role.LEADER)
                 serverAppendEntries();
             else
                 return;
 
             if (process.clock() < simulation_time)
-                timer.schedule(this,leaderTimeout);
+                timer.schedule(this,150); // Agenda a proxima execucao para o lider
         }
+    }
+
+    interface LogChangeListener{
+        boolean appliedValues(LogEntry data);
     }
 
 }

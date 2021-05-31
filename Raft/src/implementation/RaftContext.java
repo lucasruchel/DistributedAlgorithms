@@ -58,8 +58,6 @@ public class RaftContext {
         if (m.getTerm() < state.getCurrentTerm())
             return false;
 
-        if (m.getTerm() == state.getCurrentTerm() && m.getLeaderId() != state.getVotedFor())
-            return false;
 
         else if (m.getTerm() > state.getCurrentTerm()){
             state.setCurrentTerm(m.getTerm());
@@ -79,7 +77,7 @@ public class RaftContext {
         long nextIndex = m.getPrevLogIndex();
 
         for (LogEntry entry: entries){
-              if (log.size() >= nextIndex)     // Sobrepoe indices ja existentes, se houverem
+              if (log.size() > nextIndex)     // Sobrepoe indices ja existentes, se houverem
                    log.add((int) nextIndex, entry);
                 else
                    log.add(entry); // Adiciona novos valores ao log
