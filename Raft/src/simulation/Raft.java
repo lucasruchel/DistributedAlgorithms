@@ -34,6 +34,7 @@ public class Raft extends CrashReceiver {
 
     private int leaderTimeout;
     private double lastSeen;
+    private int votesFor[];
 
     private NekoMessageQueue messageQueue;
     private TimeoutTask timeoutTask;
@@ -58,6 +59,7 @@ public class Raft extends CrashReceiver {
         timer = NekoSystem.instance().getTimer();
 
         listeners = new ArrayList<>();
+        votesFor = new int[process.getN()];
     }
 
     public void addLogChangeListener(LogChangeListener listener){
@@ -121,7 +123,7 @@ public class Raft extends CrashReceiver {
             if (response.isSuccess()){
                 int indexI = response.getMatchIndex();
                 int src = m.getSource();
-                int votes = 0;
+
 
                 // Adicionar nextIndex ao receber resposta para indice
                 if(raftContext.getNextIndex().get(src) <= indexI){
@@ -133,25 +135,46 @@ public class Raft extends CrashReceiver {
 //                    Ao receber success entrada esta replicada
                 raftContext.getMatchIndex().set(src,indexI);
 
-                if (raftContext.getState().getLastApplied() < indexI) {
-                    if (commitCounter.containsKey(indexI)) {
-                        votes = commitCounter.get(indexI);
+                long lastApplied = raftContext.getState().getLastApplied();
+                List<Integer> matchIndex = raftContext.getMatchIndex();
+
+                if (lastApplied < indexI) {
+                    // Conta processos que contém indices maiores que lastApplied
+                    int votes = 1;
+                    for (int i = 0; i < matchIndex.size(); i++){
+                        if (matchIndex.get(i) > lastApplied){
+                            votes++;
+                        }
                     }
-
-                    // Adiciona voto
-                    votes++;
-
-                    if (votes >= ((process.getN() / 2) + 1)) {
+                    if (votes >= (process.getN()/2)+1){
                         if (Parameters.DEBUG)
                             System.out.printf("p%s: Applied index: %s at %s\n", process.getID(),
                                     indexI, process.clock());
 
-                        raftContext.getState().setLastApplied(indexI);
+                        raftContext.getState().setLastApplied(++lastApplied);
                         publishValues(raftContext.getState().getLog().get(indexI - 1));
                         commitCounter.remove(indexI);
-                    } else {
-                        commitCounter.put(indexI, votes);
                     }
+
+//
+//                    if (commitCounter.containsKey(indexI)) {
+//                        votes = commitCounter.get(indexI);
+//                    }
+//
+//                    // Adiciona voto
+//                    votes++;
+
+//                    if (votes >= ((process.getN() / 2) + 1)) {
+//                        if (Parameters.DEBUG)
+//                            System.out.printf("p%s: Applied index: %s at %s\n", process.getID(),
+//                                    indexI, process.clock());
+//
+//                        raftContext.getState().setLastApplied(indexI);
+//                        publishValues(raftContext.getState().getLog().get(indexI - 1));
+//                        commitCounter.remove(indexI);
+//                    } else {
+//                        commitCounter.put(indexI, votes);
+//                    }
 
                 }
             } else { // Recebeu falso, indice não corresponde
@@ -243,10 +266,10 @@ public class Raft extends CrashReceiver {
 
         if (process.getID() == 1)
             leaderTimeout = 150;
-//        else if (process.getID() == 2)
-//            leaderTimeout = 231;
-//        else if (process.getID() == 0)
-//            leaderTimeout = 290;
+        else if (process.getID() == 2)
+            leaderTimeout = 231;
+        else if (process.getID() == 0)
+            leaderTimeout = 290;
 
         timeoutTask = new TimeoutTask();
         timer.schedule(timeoutTask,leaderTimeout);

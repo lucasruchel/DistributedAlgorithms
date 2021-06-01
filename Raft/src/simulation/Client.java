@@ -42,7 +42,7 @@ public class Client extends CrashReceiver implements Raft.LogChangeListener {
                     if (!isCrashed())
                         Client.this.raft.doRequest("Hello humans!!");
                 }
-            }, 900);
+            }, 538);
 
     }
 
