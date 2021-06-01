@@ -118,7 +118,6 @@ public class Raft extends CrashReceiver {
         } else if (messageType == APPEND_ENTRY_RES){ // Resposta recebida pelo lider
             AppendEntriesResponse response = (AppendEntriesResponse) m.getContent();
 
-            double clock = process.clock();
             if (response.isSuccess()){
                 int indexI = response.getMatchIndex();
                 int src = m.getSource();
@@ -126,8 +125,13 @@ public class Raft extends CrashReceiver {
 
                 // Adicionar nextIndex ao receber resposta para indice
                 if(raftContext.getNextIndex().get(src) <= indexI){
+//                    Atualiza indice de registros a serem enviados ao processo
                     raftContext.getNextIndex().set(src,indexI+1);
                 }
+
+
+//                    Ao receber success entrada esta replicada
+                raftContext.getMatchIndex().set(src,indexI);
 
                 if (raftContext.getState().getLastApplied() < indexI) {
                     if (commitCounter.containsKey(indexI)) {
@@ -153,8 +157,8 @@ public class Raft extends CrashReceiver {
             } else { // Recebeu falso, indice não corresponde
                 int src = m.getSource();
 
-                List<Integer> matchIndex = raftContext.getMatchIndex();
-                matchIndex.set(src,matchIndex.get(src) - 1);
+                List<Integer> nextIndex = raftContext.getNextIndex();
+                nextIndex.set(src,nextIndex.get(src) - 1);
             }
 
 
@@ -234,7 +238,7 @@ public class Raft extends CrashReceiver {
         // Aqui deve iniciar o algoritmo
         // Inicialmente é definido o tempo que o algoritmo deve aguardar para obter resposta de algum líder
         // Cada processo inicia como FOLLOWER
-        leaderTimeout = ThreadLocalRandom.current().nextInt(Parameters.minElectionTimeout, Parameters.maxElectionTimeout);
+        leaderTimeout = this.getRandomTimeout();
         lastSeen = 0;
 
         if (process.getID() == 1)
@@ -254,21 +258,35 @@ public class Raft extends CrashReceiver {
         double delay = Configuration.ts;
 
         for (int i=0; i < process.getN(); i++){
+            // Nao executa enviando para ele mesmo
             if (i == process.getID())
                 continue;
 
+            // Requisicao a ser enviada
             AppendEntriesRequest appendEntry = new AppendEntriesRequest();
 
+//            Entradas adionadas em cada requisição
             List<LogEntry> entries = new ArrayList<>();
-            int p_nextIndex = raftContext.getNextIndex().get(i);
-            long server_index = raftContext.getState().getCommitIndex();
 
+//            Indice do proxima mensagem que processo deverá enviar
+            int p_nextIndex = raftContext.getNextIndex().get(i);
+
+//            Indice atual do log
+            long server_index = raftContext.getState().getLog().size();
+
+//          Indice que corresponde a última entrada conhecida de ser replicada
+            int matchIndex = raftContext.getMatchIndex().get(i);
+
+//            Termo utilizado pelo líder, atualmente eleito
             appendEntry.setTerm(raftContext.getState().getCurrentTerm());
+
+//            Identificacao do lider
             appendEntry.setLeaderId(process.getID());
 
-
+//          TODO verificar se nesse sentido esta correto
             appendEntry.setLeaderCommit(raftContext.getState().getLastApplied());
 
+//            Se o registro do servidor ser maior do 0
             if (server_index > 0){
                 List<LogEntry> logEntries = raftContext.getState().getLog();
 
@@ -277,8 +295,8 @@ public class Raft extends CrashReceiver {
 
 
 
-                 if ((p_nextIndex - 2) >= 0 && logEntries.size() > (p_nextIndex - 2)){
-                    prevTerm = logEntries.get(p_nextIndex-2);
+                 if ((p_nextIndex - 2 >= 0 ) && (p_nextIndex - 2 <= logEntries.size()) ){
+                    prevTerm = logEntries.get(p_nextIndex - 2);
 
                 }
 
@@ -294,9 +312,11 @@ public class Raft extends CrashReceiver {
 
                 }
 
-                if (server_index >= p_nextIndex){
-                    entry = logEntries.get(p_nextIndex-1);
-                    entries.add(entry);
+                if (matchIndex == p_nextIndex - 1){
+                    if (server_index >= p_nextIndex){
+                        entry = logEntries.get(p_nextIndex-1);
+                        entries.add(entry);
+                    }
                 }
 
 
@@ -318,14 +338,23 @@ public class Raft extends CrashReceiver {
 
             State state = raftContext.getState();
             state.getLog().add(logEntry);
-            state.setCommitIndex(state.getCommitIndex() + 1);
-
-            commitCounter.put((int) state.getCommitIndex(), 1);
 
         }
     }
 
+    private int getRandomTimeout(){
+        return ThreadLocalRandom.current().
+                nextInt(
+                        Parameters.minElectionTimeout,
+                        Parameters.maxElectionTimeout
+                );
+    }
+
     public void sendRPCVoteRequest(){
+        // Para tratar split votes indefinidos electionTime deve ser novamente randomizado
+        leaderTimeout = getRandomTimeout();
+
+
         State state = raftContext.getState();
 
         // Define papel como candidato
@@ -369,7 +398,7 @@ public class Raft extends CrashReceiver {
         @Override
         public void run() {
 
-            if (process.clock() > simulation_time)
+            if (process.clock() > simulation_time || isCrashed())
                 return;
 
             if (Parameters.DEBUG)
@@ -381,8 +410,26 @@ public class Raft extends CrashReceiver {
 
     class ServerTask extends TimerTask{
 
+        public ServerTask(){
+            raftContext = Raft.this.raftContext;
+
+            int logSize = raftContext.getState().getLog().size();
+
+            List<Integer> nextIndex = raftContext.getNextIndex();
+            List<Integer> matchIndex = raftContext.getMatchIndex();
+            for (int i = 0; i < nextIndex.size(); i++){
+                nextIndex.set(i,logSize+1);
+                matchIndex.set(i,0);
+            }
+
+
+        }
+
         @Override
         public void run() {
+            if (isCrashed())
+                return;
+
             // Se o processo continua com papel de líder envia o appendEntries
             if (raftContext.getState().getRole() == Role.LEADER)
                 serverAppendEntries();
