@@ -32,17 +32,10 @@ public class Client extends CrashReceiver implements Raft.LogChangeListener {
             NekoSystem.instance().getTimer().schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    Client.this.raft.doRequest("Olá Mundo");
+//                    Client.this.raft.doRequest(String.format());
                 }
-            }, 300);
+            }, 200);
 
-            NekoSystem.instance().getTimer().schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    if (!isCrashed())
-                        Client.this.raft.doRequest("Hello humans!!");
-                }
-            }, 538  );
 
     }
 
@@ -52,7 +45,6 @@ public class Client extends CrashReceiver implements Raft.LogChangeListener {
                     process.getID(),
                     data.getData(),
                     process.clock());
-
 
         return true;
     }

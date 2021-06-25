@@ -1,5 +1,7 @@
 package messages;
 
+import configurations.Parameters;
+
 public class RequestVote {
     private long term;
     private long candidateId;
@@ -47,11 +49,13 @@ public class RequestVote {
 
     @Override
     public String toString() {
-        return "VoteReq{" +
+        if (Parameters.DEBUG)
+            return "VoteReq{" +
                 "term=" + term +
                 ", candidateId=" + candidateId +
                 ", lastLogIndex=" + lastLogIndex +
                 ", lastLogTerm=" + lastLogTerm +
                 '}';
+        return "VoteReq";
     }
 }

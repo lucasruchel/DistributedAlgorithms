@@ -68,8 +68,11 @@ public class RaftContext {
         }
 
         long prevLog = m.getPrevLogIndex();
-        if (log.size() > prevLog && log.get((int) prevLog).getTerm() == m.getPrevLogTerm())
+//        && log.get((int) prevLog).getTerm() == m.getPrevLogTerm()
+        if (log.size() > prevLog || log.size() < prevLog)
             return false;
+
+
 
         // Condições de sucesso
         // Entrada sobrepoe log, ainda não está aplicada

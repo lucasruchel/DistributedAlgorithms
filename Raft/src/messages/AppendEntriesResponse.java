@@ -1,5 +1,7 @@
 package messages;
 
+import configurations.Parameters;
+
 public class AppendEntriesResponse {
     private boolean success;
     private long term;
@@ -37,10 +39,12 @@ public class AppendEntriesResponse {
 
     @Override
     public String toString() {
-        return "append_res{" +
+        if (Parameters.DEBUG)
+            return "append_res{" +
                 "success=" + success +
                 ", t=" + term +
                 ", index=" + matchIndex +
                 '}';
+        return "append_res";
     }
 }

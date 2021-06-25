@@ -32,7 +32,10 @@ public class Raft extends CrashReceiver {
     private static final int VOTE_REQ = 1015;
     private static final int VOTE_RES = 1016;
 
-    private int leaderTimeout;
+    private static final double DEFAULT_INTERVAL = 50;
+    private static final double DEFAULT_TIMEOUT = 200;
+
+    private double leaderTimeout;
     private double lastSeen;
     private int votesFor[];
 
@@ -41,6 +44,7 @@ public class Raft extends CrashReceiver {
     private Timer timer;
 
     private List<LogChangeListener> listeners;
+
 
     static {
         MessageTypes.instance().register(APPEND_ENTRY_REQ,"Append_Req");
@@ -77,7 +81,7 @@ public class Raft extends CrashReceiver {
 
 
     @Override
-    public void deliver(NekoMessage m) {
+    public synchronized void deliver(NekoMessage m) {
         if (isCrashed())
             return;
 
@@ -103,6 +107,7 @@ public class Raft extends CrashReceiver {
                     if (Parameters.DEBUG){
                         System.out.printf("p%s:Applied in followers at %f: %d\n",process.getID(),process.clock(),request.getLeaderCommit());
                     }
+                    logger.info(String.format("p%s: delivered at followers %s", me, request.getLeaderCommit()) );
                     // inicia o timer novamente para aguardar o heartbeat do lider
                 }
                 timer.schedule(timeoutTask,leaderTimeout);
@@ -147,34 +152,16 @@ public class Raft extends CrashReceiver {
                         }
                     }
                     if (votes >= (process.getN()/2)+1){
-                        if (Parameters.DEBUG)
+                        if (Parameters.DEBUG){
                             System.out.printf("p%s: Applied index: %s at %s\n", process.getID(),
                                     indexI, process.clock());
+                        }
+                        logger.info(String.format("p%s: delivered at master index %s", me, lastApplied+1) );
 
                         raftContext.getState().setLastApplied(++lastApplied);
                         publishValues(raftContext.getState().getLog().get(indexI - 1));
                         commitCounter.remove(indexI);
                     }
-
-//
-//                    if (commitCounter.containsKey(indexI)) {
-//                        votes = commitCounter.get(indexI);
-//                    }
-//
-//                    // Adiciona voto
-//                    votes++;
-
-//                    if (votes >= ((process.getN() / 2) + 1)) {
-//                        if (Parameters.DEBUG)
-//                            System.out.printf("p%s: Applied index: %s at %s\n", process.getID(),
-//                                    indexI, process.clock());
-//
-//                        raftContext.getState().setLastApplied(indexI);
-//                        publishValues(raftContext.getState().getLog().get(indexI - 1));
-//                        commitCounter.remove(indexI);
-//                    } else {
-//                        commitCounter.put(indexI, votes);
-//                    }
 
                 }
             } else { // Recebeu falso, indice não corresponde
@@ -227,9 +214,8 @@ public class Raft extends CrashReceiver {
                 timeoutTask.cancel();
 
                 raftContext.getState().setRole(Role.LEADER);
-                if (Parameters.DEBUG){
-                    System.out.printf("p%s: Lider eleito!! \n",process.getID());
-                }
+                logger.fine("---> líder eleito!!");
+
 
 
                 // inicia processo para heartbeat e appendentries
@@ -264,12 +250,22 @@ public class Raft extends CrashReceiver {
         leaderTimeout = this.getRandomTimeout();
         lastSeen = 0;
 
-        if (process.getID() == 1)
-            leaderTimeout = 150;
-        else if (process.getID() == 2)
-            leaderTimeout = 231;
-        else if (process.getID() == 0)
-            leaderTimeout = 290;
+
+
+
+        switch (process.getID()){
+            case 0: {
+                // Vamos fixar o p0 como líder, disparando o evento de timeout do líder antes de qualquer outro processo
+                leaderTimeout = 100;
+            }
+            break;
+            case 1: {
+                // O timeout do líder para p1 será fixo, garantindo que seja o próximo líder
+                leaderTimeout = DEFAULT_TIMEOUT;
+            }
+        }
+
+
 
         timeoutTask = new TimeoutTask();
         timer.schedule(timeoutTask,leaderTimeout);
@@ -400,6 +396,7 @@ public class Raft extends CrashReceiver {
 
         timer.schedule(timeoutTask,leaderTimeout);
 
+        double delay = Parameters.TS;
         for (int i = 0; i < process.getN(); i++){
             if (i == process.getID())
                 continue;
@@ -409,7 +406,10 @@ public class Raft extends CrashReceiver {
                     requestVote,
                     VOTE_REQ
             );
-            sender.send(m);
+
+
+            timer.schedule(new SenderTask(m),delay);
+            delay += Parameters.TS;
         }
 
     }
@@ -424,8 +424,13 @@ public class Raft extends CrashReceiver {
             if (process.clock() > simulation_time || isCrashed())
                 return;
 
-            if (Parameters.DEBUG)
+
+            logger.fine("-------->>   Timeout do líder !!!!!");
+
+            if (Parameters.DEBUG) {
                 System.out.printf("p%s: Iniciando eleição de líder at %s\n",process.getID(),process.clock());
+            }
+
 
                 sendRPCVoteRequest();
         }
@@ -460,7 +465,7 @@ public class Raft extends CrashReceiver {
                 return;
 
             if (process.clock() < simulation_time)
-                timer.schedule(this,150); // Agenda a proxima execucao para o lider
+                timer.schedule(this,DEFAULT_INTERVAL); // Agenda a proxima execucao para o lider
         }
     }
 

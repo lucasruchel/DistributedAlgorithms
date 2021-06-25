@@ -1,5 +1,7 @@
 package messages;
 
+import configurations.Parameters;
+
 public class ResponseVote {
     private long term;
     private boolean granted;
@@ -27,9 +29,11 @@ public class ResponseVote {
 
     @Override
     public String toString() {
-        return "VoteResponse{" +
+        if (Parameters.DEBUG)
+            return "VoteResponse{" +
                 "term=" + term +
                 ", granted=" + granted +
                 '}';
+        return "VoteResponse";
     }
 }

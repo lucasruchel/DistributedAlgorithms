@@ -12,10 +12,13 @@ public class CrashReceiver extends ActiveReceiver implements CrashInterface {
     protected boolean crashed;
     protected static Logger logger = NekoLogger.getLogger("messages");
     protected double simulation_time;
+    protected int me;
+
 
     public CrashReceiver(NekoProcess process, String name) {
         super(process, "crash-"+name);
 
+        me = process.getID();
 
         this.sender = sender;
 
@@ -25,6 +28,10 @@ public class CrashReceiver extends ActiveReceiver implements CrashInterface {
 
         crashed = false;
         simulation_time = NekoSystem.instance().getConfig().getDouble("simulation.time");
+    }
+
+    public void increaseSimulationTime(int value){
+        simulation_time += value;
     }
 
     public void crash() {

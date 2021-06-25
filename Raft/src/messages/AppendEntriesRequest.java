@@ -1,5 +1,6 @@
 package messages;
 
+import configurations.Parameters;
 import data.LogEntry;
 
 import java.util.Arrays;
@@ -73,7 +74,8 @@ public class AppendEntriesRequest {
 
     @Override
     public String toString() {
-        return "append_req{" +
+        if (Parameters.DEBUG)
+            return "append_req{" +
                 "term=" + term +
                 ", leaderId=" + leaderId +
                 ", prevLogIndex=" + prevLogIndex +
@@ -81,5 +83,6 @@ public class AppendEntriesRequest {
                 ", entries=" + entries +
                 ", leaderCommit=" + leaderCommit +
                 '}';
+        return "append_req";
     }
 }

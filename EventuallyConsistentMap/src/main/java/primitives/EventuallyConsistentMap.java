@@ -15,7 +15,7 @@ public class EventuallyConsistentMap<K, V> implements api.EventuallyConsistentMa
     private EventuallyConsistentMapListener<K, MapValue<V>> listeners;
     private String mapName;
     private int localNodeId;
-    private final Map<Integer, EventAccumulator> senderPending;
+//    private final Map<Integer, EventAccumulator> senderPending;
     private final Map<Integer, Long> antiEntropyTimes = Maps.newConcurrentMap();
 
     public EventuallyConsistentMap(){
