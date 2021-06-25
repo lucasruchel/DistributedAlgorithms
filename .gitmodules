@@ -1,0 +1,3 @@
+[submodule "VCube"]
+	path = VCube
+	url = git@github.com:lucasruchel/vcube-simulation.git
