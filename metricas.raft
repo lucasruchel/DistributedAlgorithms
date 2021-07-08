@@ -1,0 +1,105 @@
+######################
+raft-8-5000.log
+######################
+Mensagens: 140020
+Tempo de inicio: 200,000
+Tempo de término: 250232,100
+
+######################
+raft-8-10000.log
+######################
+Mensagens: 280020
+Tempo de inicio: 200,000
+Tempo de término: 500232,100
+
+######################
+raft-8-20000.log
+######################
+Mensagens: 560020
+Tempo de inicio: 200,000
+Tempo de término: 1000232,100
+
+######################
+raft-8-50000.log
+######################
+Mensagens: 1400020
+Tempo de inicio: 200,000
+Tempo de término: 2500232,100
+
+######################
+raft-8-100000.log
+######################
+Mensagens: 2800020
+Tempo de inicio: 200,000
+Tempo de término: 5000232,100
+
+######################
+raft-16-5000.log
+######################
+Mensagens: 300044
+Tempo de inicio: 200,000
+Tempo de término: 250233,300
+
+######################
+raft-16-10000.log
+######################
+Mensagens: 600044
+Tempo de inicio: 200,000
+Tempo de término: 500233,300
+
+######################
+raft-16-20000.log
+######################
+Mensagens: 1200044
+Tempo de inicio: 200,000
+Tempo de término: 1000233,300
+
+######################
+raft-16-50000.log
+######################
+Mensagens: 3000044
+Tempo de inicio: 200,000
+Tempo de término: 2500233,300
+
+######################
+raft-16-100000.log
+######################
+Mensagens: 6000044
+Tempo de inicio: 200,000
+Tempo de término: 5000233,300
+
+######################
+raft-32-5000.log
+######################
+Mensagens: 620092
+Tempo de inicio: 200,000
+Tempo de término: 250235,700
+
+######################
+raft-32-10000.log
+######################
+Mensagens: 1240092
+Tempo de inicio: 200,000
+Tempo de término: 500235,700
+
+######################
+raft-32-20000.log
+######################
+Mensagens: 2480092
+Tempo de inicio: 200,000
+Tempo de término: 1000235,700
+
+######################
+raft-32-50000.log
+######################
+Mensagens: 6200092
+Tempo de inicio: 200,000
+Tempo de término: 2500235,700
+
+######################
+raft-32-100000.log
+######################
+Mensagens: 12400092
+Tempo de inicio: 200,000
+Tempo de término: 5000235,700
+

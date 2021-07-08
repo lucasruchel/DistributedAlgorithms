@@ -26,7 +26,6 @@ public class Raft extends CrashReceiver {
 
     private long votesForTerm;
 
-
     private static final int APPEND_ENTRY_REQ = 1013;
     private static final int APPEND_ENTRY_RES = 1014;
     private static final int VOTE_REQ = 1015;
