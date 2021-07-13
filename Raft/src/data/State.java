@@ -1,5 +1,8 @@
 package data;
 
+import configurations.Parameters;
+import messages.AppendEntriesRequest;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -90,5 +93,50 @@ public class State {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public boolean doAppendEntries(AppendEntriesRequest m){
+        List<LogEntry> log = getLog();
+
+        // Condicoes em que não ocorre com sucesso
+        if (m.getTerm() < getCurrentTerm())
+            return false;
+
+
+        else if (m.getTerm() > getCurrentTerm()){
+            setCurrentTerm(m.getTerm());
+            setRole(Role.FOLLOWER);
+
+            if (Parameters.DEBUG)
+                System.out.printf("Atualizando para Follower t=%s", m.getTerm());
+        }
+
+        long prevLog = m.getPrevLogIndex();
+//        && log.get((int) prevLog).getTerm() == m.getPrevLogTerm()
+        if (log.size() > prevLog || log.size() < prevLog)
+            return false;
+
+
+
+        // Condições de sucesso
+        // Entrada sobrepoe log, ainda não está aplicada
+        List<LogEntry> entries = m.getEntries();
+        long nextIndex = m.getPrevLogIndex();
+
+        for (LogEntry entry: entries){
+            if (log.size() > nextIndex)     // Sobrepoe indices ja existentes, se houverem
+                log.add((int) nextIndex, entry);
+            else
+                log.add(entry); // Adiciona novos valores ao log
+
+            nextIndex++; // Avanca o log
+        }
+
+        // Menor indice entre o leaderCommitIndex e os valores enviados
+        // Evitando que o leader envie o indice dele sem os valores correspondentes, marcando como pendente ainda
+        if (m.getLastLogIndex() > getCommitIndex())
+            setCommitIndex(Math.min(m.getLastLogIndex(),m.getLeaderCommit()));
+
+        return true;
     }
 }

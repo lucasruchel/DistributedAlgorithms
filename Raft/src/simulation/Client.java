@@ -1,6 +1,7 @@
 package simulation;
 
 import data.LogEntry;
+import lse.neko.NekoMessage;
 import lse.neko.NekoProcess;
 import lse.neko.NekoSystem;
 import lse.neko.util.TimerTask;
@@ -47,5 +48,10 @@ public class Client extends CrashReceiver implements Raft.LogChangeListener {
                     process.clock());
 
         return true;
+    }
+
+    @Override
+    protected void doDeliver(NekoMessage m) {
+
     }
 }

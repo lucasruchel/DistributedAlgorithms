@@ -6,8 +6,10 @@ public interface Parameters {
    int minElectionTimeout = 250;
    int maxElectionTimeout = 300;
 
-   boolean DEBUG = false;
+   boolean DEBUG = true;
    double TS = 0.1; // Time to Send Messages
+   double TR = 0.1; // Time to Send Messages
+
 
 
 }

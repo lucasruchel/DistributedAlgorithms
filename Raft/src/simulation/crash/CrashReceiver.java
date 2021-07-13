@@ -1,30 +1,45 @@
 package simulation.crash;
 
+import configurations.Parameters;
 import lse.neko.*;
+import lse.neko.util.Timer;
 import lse.neko.util.TimerTask;
 import lse.neko.util.logging.NekoLogger;
 import org.apache.java.util.Configurations;
 
 import java.util.logging.Logger;
 
-public class CrashReceiver extends ActiveReceiver implements CrashInterface {
+public abstract class CrashReceiver extends ActiveReceiver implements CrashInterface {
+    protected final Timer timer;
     protected SenderInterface sender;
     protected boolean crashed;
     protected static Logger logger = NekoLogger.getLogger("messages");
     protected double simulation_time;
     protected int me;
 
+//  Variáveis para controle do envio de mensagens
+    private double clockAt;
+    private double delayAt;
+    private double deliverDelayAt;
+    private double deliverClockAt;
 
     public CrashReceiver(NekoProcess process, String name) {
         super(process, "crash-"+name);
 
         me = process.getID();
 
+        timer = NekoSystem.instance().getTimer();
+
         this.sender = sender;
 
         // Configurações de crash
         loadConfig();
 
+//        Inicializa valores de variáveis com tempo inicial zerado
+        clockAt = 0;
+        delayAt = 0;
+        deliverDelayAt = 0;
+        deliverClockAt = 0;
 
         crashed = false;
         simulation_time = NekoSystem.instance().getConfig().getDouble("simulation.time");
@@ -33,6 +48,33 @@ public class CrashReceiver extends ActiveReceiver implements CrashInterface {
     public void increaseSimulationTime(int value){
         simulation_time += value;
     }
+
+    protected void send(NekoMessage m){
+       if (process.clock() != clockAt){
+           clockAt = process.clock();
+           delayAt = Parameters.TS;
+       }
+
+//       Agenda tarefa para envio no atraso programado
+       timer.schedule(new SenderTask(m),delayAt);
+
+//       Incrementa para o atraso para que a próxima mensagem que for enviada neste mesmo tempo sofra atraso
+        delayAt += Parameters.TS;
+    }
+
+    @Override
+    public void deliver(NekoMessage m) {
+        if (process.clock() != deliverClockAt){
+            deliverClockAt = process.clock();
+            deliverDelayAt = Parameters.TR;
+        }
+
+        timer.schedule(new DeliverTask(m),deliverDelayAt);
+
+        deliverDelayAt += Parameters.TR;
+    }
+
+    protected abstract void doDeliver(NekoMessage m);
 
     public void crash() {
         if (!crashed) {
@@ -183,6 +225,7 @@ public class CrashReceiver extends ActiveReceiver implements CrashInterface {
 
     }
 
+
     protected class SenderTask extends TimerTask {
         private NekoMessage m;
         public SenderTask(NekoMessage m) {
@@ -194,7 +237,20 @@ public class CrashReceiver extends ActiveReceiver implements CrashInterface {
             if (!isCrashed()){
                sender.send(m);
             }
+        }
+    }
 
+    protected class DeliverTask extends TimerTask {
+        private NekoMessage m;
+        public DeliverTask(NekoMessage m) {
+            this.m = m;
+        }
+
+        @Override
+        public void run() {
+            if (!isCrashed()){
+                doDeliver(m);
+            }
         }
     }
 }

@@ -29,7 +29,7 @@ public class LogEntry {
     public String toString() {
         return "d{" +
                 term + "->" +
-                "data=" + data
-                ;
+                "data=" + data +
+                "}";
     }
 }
